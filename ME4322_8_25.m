@@ -219,19 +219,87 @@ V_S5_G = cross(angVel_FG, S5-G);
 % Calculating Linear Accelerations
 
 % Acceleration at S1
-A_S1_A = cross(WAB, S1-A) + cross(WAB, cross(WAB, S1-A));
+A_S1_A = cross(alpha_AB, S1-A) + cross(omega_AB, cross(omega_AB, S1-A));
 
 % Acceleration at S2
 % A_S2A = A_S2B + A_BA and A_BA = 0 since angular velocity is constant
-A_S2_A = cross(omegaBEC, S2-B) + cross(omegaBEC, cross(omegaBEC, S2-B));
+
+A_S2_A = cross(alphaBEC_vector, S2-B) + cross(omegaBEC, cross(omegaBEC, S2-B));
 
 % Acceleration at S3
-A_S3_D = cross(omegaCD, S3-D) + cross(omegaCD, cross(omegaCD, S3-D));
+A_S3_D = cross(alphaCD_vector, S3-D) + cross(omegaCD, cross(omegaCD, S3-D));
 
 % Acceleration at S4
 % A_S4G = A_S4F + alphaFG
-A_S4_F = cross(omega_EF, F-S4) + cross(omega_EF, cross(omega_EF, F-S4));
+A_S4_F = cross([0 0 alphaEF], F-S4) + cross(omega_EF, cross(omega_EF, F-S4));
 A_S4_G = A_S4_F + alphaFG;
 
 % Acceleration at S5
-A_S5_G = cross(omega_FG, G-S5) + cross(omega_FG, cross(omega_FG, G-S5));
+A_S5_G = cross([0 0 alphaFG], G-S5) + cross(omega_FG, cross(omega_FG, G-S5));
+
+%Newton's Second Moment 
+MassAB = 1;
+MassBEC = 1;
+MassCD = 1;
+MassEF = 1;
+MassFG = 1;
+
+% Mass Moments of Inertia
+J_AB = 1;
+J_BEC = 1;
+J_CD = 1;
+J_EF = 1;
+J_FG = 1;
+
+syms NFAx NFAy NFBx NFBy NFCx NFCy NFDx NFDy NFEx NFEy NFFx NFFy NFGx NFGy NTin
+
+% Define Forces
+
+NForceA = [NFAx NFAy 0];
+NForceB = [NFBx NFBy 0];
+NForceC = [NFCx NFCy 0];
+NForceD = [NFDx NFDy 0];
+NForceE = [NFEx NFEy 0];
+NForceF = [NFFx NFFy 0];
+NForceG = [NFGx NFGy 0];
+NInputTorque = [0 0 NTin];
+
+%Equations for link AB
+% Sum of Forces
+eqn15 = NForceA + NForceB + WAB == MassAB * A_S1_A;
+
+% Sum of Moments
+eqn16 = cross(A-S1, NForceA) + cross(B-S1, NForceB) + NInputTorque == J_AB * A_S1_A;
+
+% Link BEC
+eqn17 = -NForceB + NForceC + NForceE + WBEC == MassBEC * A_S2_A;
+eqn18 = cross(B-S2, -NForceB) + cross(C-S2, NForceC) + cross(E-S2, NForceE) == J_BEC * alphaBEC_vector;
+
+% Link CD
+eqn19 = -NForceC + NForceD +WCD == MassCD * A_S3_D;
+eqn20 = cross(C-S3, -NForceC) + cross(D-S3, NForceD) == J_CD * alphaCD_vector;
+
+% Link EF
+eqn21 = -NForceE + NForceF + WEF == MassEF * A_S4_G;
+eqn22 = cross(E-S4, -NForceE) + cross(F-S4, NForceF) == J_EF * alphaEF * [0 0 alphaEF];
+
+eqn23 = -NForceF + NForceG + WFG + AppliedForce == MassFG * A_S5_G;
+eqn24 = cross(F-S5, -NForceF) + cross(G-S5, NForceG) == J_FG * [0 0 alphaFG];
+
+NeqnMatrix = [eqn15, eqn16, eqn17, eqn18, eqn19, eqn20, eqn21, eqn22, eqn23, eqn24];
+DynamicSolution = solve(NeqnMatrix, [NFAx, NFAy, NFBx, NFBy, NFCx, NFCy, NFDx, NFDy, NFEx, NFEy, NFFx, NFFy, NFGx, NFGy, NTin]);
+
+NForce_Ax = double(DynamicSolution.NFAx);
+NForce_Ay = double(DynamicSolution.NFAy);
+NForce_Bx = double(DynamicSolution.NFBx);
+NForce_By = double(DynamicSolution.NFBy);
+NForce_Cx = double(DynamicSolution.NFCx);
+NForce_Cy = double(DynamicSolution.NFCy);
+NForce_Dx = double(DynamicSolution.NFDx);
+NForce_Dy = double(DynamicSolution.NFDy);
+NForce_Ex = double(DynamicSolution.NFEx);
+NForce_Ey = double(DynamicSolution.NFEy);
+NForce_Fx = double(DynamicSolution.NFFx);
+NForce_Fy = double(DynamicSolution.NFFy);
+NForce_Gx = double(DynamicSolution.NFGx);
+NForce_Gy = double(DynamicSolution.NFGy);
