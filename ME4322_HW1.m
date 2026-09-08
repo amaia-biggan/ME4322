@@ -384,19 +384,21 @@ for theta = 1 : 1 : 360
             % Store values for plotting
 
             new_B_x(theta +1) = B_new(1);
-            new_B_y(theta +1) = B_new(1);
+            new_B_y(theta +1) = B_new(2);
             new_C_x(theta +1) = C_new(1);
-            new_C_y(theta +1) = C_new(1);
+            new_C_y(theta +1) = C_new(2);
             new_E_x(theta +1) = E_new(1);
-            new_E_y(theta +1) = E_new(1);
+            new_E_y(theta +1) = E_new(2);
             new_F_x(theta +1) = F_new(1);
-            new_F_y(theta +1) = F_new(1);
+            new_F_y(theta +1) = F_new(2);
 
         else
             fprintf('New position cannot be determined at angle: %d degree', theta);
+            break;
         end
     else
         fprintf('New position cannot be determined at angle: %d degree', theta);
+        break;
     end
 
     eqn1 = ForceA +ForceB + WAB == 0;
@@ -405,10 +407,6 @@ for theta = 1 : 1 : 360
     % S1A x FA + S1B x FB + InputTorque = 0
 
     eqn2 = cross(A-S1, ForceA) + cross(B_new-S1, ForceB) + InputTorque == 0;
-
-    %equations for Link BEC
-    %Sum of forces =0
-    %-Fb +Fc +Fe +WBEC = 0
 
     eqn3 = -ForceB + ForceC + WBC == 0;
 
@@ -439,20 +437,170 @@ for theta = 1 : 1 : 360
     eqnMatrix = [eqn1,eqn2,eqn3,eqn4,eqn5,eqn6,eqn7,eqn8,eqn9,eqn10];
 
     StaticSolution = solve(eqnMatrix, [FAx FAy FBx FBy FCx FCy FDx FDy FEx FEy FFx FFy FGx FGy Tin]);
-
-    Force_Ax(theta + 1) = double(StaticSolution.FAx);
-    Force_Ay(theta + 1) = double(StaticSolution.FAy);
-    Force_Bx(theta + 1) = double(StaticSolution.FBx);
-    Force_By(theta + 1) = double(StaticSolution.FBy);
-    Force_Cx(theta + 1) = double(StaticSolution.FCx);
-    Force_Cy(theta + 1) = double(StaticSolution.FCy);
-    Force_Dx(theta + 1) = double(StaticSolution.FDx);
-    Force_Dy(theta + 1) = double(StaticSolution.FDy);
-    Force_Ex(theta + 1) = double(StaticSolution.FEx);
-    Force_Ey(theta + 1) = double(StaticSolution.FEy);
-    Force_Fx(theta + 1) = double(StaticSolution.FFx);
-    Force_Fy(theta + 1) = double(StaticSolution.FFy);
-    Force_Gx(theta + 1) = double(StaticSolution.FGx);
-    Force_Gy(theta + 1) = double(StaticSolution.FGy);
+    
+    Force_Ax = double(StaticSolution.FAx);
+    Force_Ay = double(StaticSolution.FAy);
+    Force_Bx = double(StaticSolution.FBx);
+    Force_By = double(StaticSolution.FBy);
+    Force_Cx = double(StaticSolution.FCx);
+    Force_Cy = double(StaticSolution.FCy);
+    Force_Dx = double(StaticSolution.FDx);
+    Force_Dy = double(StaticSolution.FDy);
+    Force_Ex = double(StaticSolution.FEx);
+    Force_Ey = double(StaticSolution.FEy);
+    Force_Fx = double(StaticSolution.FFx);
+    Force_Fy = double(StaticSolution.FFy);
+    Force_Gx = double(StaticSolution.FGx);
+    Force_Gy = double(StaticSolution.FGy);
  
+    Force_A(theta+1) = sqrt(Force_Ax^2+Force_Ay^2);
+    Force_B(theta+1) = sqrt(Force_Bx^2+Force_By^2);
+    Force_C(theta+1) = sqrt(Force_Cx^2+Force_Cy^2);
+    Force_D(theta+1) = sqrt(Force_Dx^2+Force_Dy^2);
+    Force_E(theta+1) = sqrt(Force_Ex^2+Force_Ey^2);
+    Force_F(theta+1) = sqrt(Force_Fx^2+Force_Fy^2);
+    Force_G(theta+1) = sqrt(Force_Gx^2+Force_Gy^2);
+
+    % Loop ABCD
+    eqn11 = cross(omega_AB, B_new-A) + cross(omega_BC, C_new-B_new) +cross(omega_DE, E_new-D) == 0;
+    loop1Solution = solve(eqn11,[wBC wDE]);
+    % Extract angular velocities from the loop solution
+    angularVelocity_BC(theta+1) = double(loop1Solution.wBC);
+    angularVelocity_DE(theta+1) = double(loop1Solution.wDE);
+
+    % Loop ABCEFGA
+    eqn12 = cross(omega_AB, B_new-A) + cross(omegaBC, C_new-B_new) + cross(omegaDE, E_new-C_new) + cross(omega_EF, F_new-E_new) + cross(omega_FG, G-F_new) == 0;
+    loop2Solution = solve(eqn12, [wEF wFG]);
+    angularVelocity_EF(theta+1) = double(loop2Solution.wEF);
+    angularVelocity_FG(theta+1) = double(loop2Solution.wFG);
+
+    a_B_A = cross(alpha_AB, B_new-A) + cross(omega_AB, cross(omega_AB, B_new-A));
+    a_C_B = cross(alpha_BC, C_new-B_new) + cross(omegaBC, cross(omegaBC, C_new-B_new));
+    a_E_D = cross(alpha_DE, E_new-D) + cross(omegaDE, cross(omegaDE, E_new-D));
+
+    eqn13 = a_B_A + a_C_B + a_E_D == 0;
+
+    loop1AccSolution = solve(eqn13, [aBC aDE]);
+
+    alphaBC(theta+1) = double(loop1AccSolution.aBC);
+    alphaDE(theta+1) = double(loop1AccSolution.aDE);
+    % Loop ABCEFGA
+
+    % a_E_D + a_F_E + a_G_F = 0
+    a_E_D = cross(alphaDE_vector, E_new-D) + cross(omegaDE, cross(omegaDE, E_new-D));
+    a_F_E = cross(alpha_EF, F_new-E_new) + cross(omegaEF, cross(omegaEF, F_new-E_new));
+    a_G_F = cross(alpha_FG, G-F_new) + cross(omegaFG, cross(omegaFG, G-F_new));
+
+    %eqn14 = a_E_C + a_F_E + a_G_F == 0;
+    eqn14 = a_E_D + a_F_E + a_G_F == 0;
+
+    loop2AccSolution = solve(eqn14, [aEF aFG]);
+
+    alphaEF(theta+1) = double(loop2AccSolution.aEF);
+    alphaFG(theta+1) = double(loop2AccSolution.aFG);
+
+
+    % Velocity at Joint S1
+    vS1_A = cross(omega_AB, S1-A);
+
+    % Velocity at S2
+    % VS2_A = VS2_B + VB_A
+    vS2_B = cross(omegaBC, S2-B);
+    vS2_A = vS2_B + cross(omega_AB, B-A);
+
+    % Velocity at S3
+    vS3_D = cross(omegaDE, S3-D);
+
+    % Velocity at S4
+    % VS4_D = VS4_E + VE_D
+    vS4_E = cross(omegaEF, S4-E);
+    vS4_D = vS4_E + cross(omegaDE, E-D);
+
+    % Velocity at S5
+    vS5_G = cross(omegaFG, S5-G);
+
+
+    % Calculating Linear Accelerations
+
+    % Acceleration at S1 (AB)
+    aS1_A = cross(alpha_AB, S1-A) + cross(omega_AB, cross(omega_AB, S1-A));
+
+    % Acceleration at S2 (BC)
+    a_BA = cross(alpha_AB, B-A) + cross(omega_AB, cross(omega_AB, B-A));
+    aS2_A = cross(alphaBC_vector, S2-B) + cross(omegaBC, cross(omegaBC, S2-B)) + a_BA;
+
+    % Acceleration at S3 (DE)
+    aS3_D = cross(alphaDE_vector, S3-D) + cross(omegaDE, cross(omegaDE, S3-D));
+
+    % Acceleration at S4 (EF)
+    % A_S4D = A_S4E + alphaDE
+    aS4_E = cross(alphaEF_vector, S4-E) + cross(omegaEF, cross(omegaEF, S4-E));
+    aS4_D = aS4_E +  cross(alphaDE_vector, E-D) + cross(omegaDE, cross(omegaDE, E-D));
+
+    % Acceleration at S5 (FG)
+    aS5_G = cross(alphaFG_vector, S5-G) + cross(omegaFG, cross(omegaFG, S5-G));
+
+end
+
+
+% Create separate figures for Forces, Angular Velocities, and Angular Accelerations
+figure('Name','Forces','NumberTitle','off');
+% (plotting will follow after this section)
+
+figure('Name','Angular Velocities','NumberTitle','off');
+% (plotting will follow after this section)
+
+figure('Name','Angular Accelerations','NumberTitle','off');
+% (plotting will follow after this section)
+
+%Forces
+lambda = 1:360;
+plot(lambda, Force_A(2:end), ".-", 'LineWidth',1.5)
+hold on
+plot(lambda, Force_B(2:end), "c-", 'Color',[1 0 0], 'MarkerFaceColor',[1 0 0])
+plot(lambda, Force_C(2:end), "g:")
+plot(lambda, Force_D(2:end), "r--")
+plot(lambda, Force_E(2:end), "b--", 'LineWidth',1.5)
+plot(lambda, Force_F(2:end), "m-.", 'LineWidth',1.5)
+plot(lambda, Force_G(2:end), "k:", 'LineWidth',1.5)
+legend("Force\_A","Force\_B","Force\_C","Force\_D","Force\_E","Force\_F","Force\_G")
+xlabel("Angle (degrees)")
+ylabel("Force (N)")
+grid on
+hold off;
+
+% Angular Velocities
+plot(lambda, angularVelocity_BC(2:end), "c-", 'Color',[1 0 0], 'MarkerFaceColor',[1 0 0])
+hold on
+plot(lambda, angularVelocity_DE(2:end), "g:")
+plot(lambda, angularVelocity_EF(2:end), "r--")
+plot(lambda, angularVelocity_FG(2:end), "b--", 'LineWidth',1.5)
+legend("Angular Velocity\_BC","Angular Velocity\_DCE","Angular Velocity\_EF","Angular Velocity\_FG")
+xlabel("Angle (degrees)")
+ylabel("Angular Velocity (rad/sec)")
+grid on
+hold off;
+
+% Angular Accelerations
+plot(lambda, alphaBC(2:end), "c-", 'Color',[1 0 0], 'MarkerFaceColor',[1 0 0])
+hold on
+plot(lambda, alphaDE(2:end), "g:")
+plot(lambda, alphaEF(2:end), "r--")
+plot(lambda, alphaFG(2:end), "b--", 'LineWidth',1.5)
+legend("Angular Acceleration\_BC","Angular Acceleration\_DCE","Angular Acceleration\_EF","Angular Acceleration\_FG")
+xlabel("Angle (degrees)")
+ylabel("Angular Acceleration (rad/sec^2)")
+grid on
+hold off;
+
+drawnow; pause(0.1);
+if isempty(findobj(gcf,'Type','line'))
+    warning('No plot lines found in current figure.');
+end
+% Ensure figure is visible and on screen
+fig = gcf;
+set(fig,'Visible','on');
+try
+    movegui(fig,'center');
+catch
 end
