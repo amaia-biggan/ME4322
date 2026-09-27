@@ -1,0 +1,114 @@
+clc
+clear
+
+%Values of different parameters
+%M=8.0; %kg
+%K=100; %N/m
+%B=50.0; %N.s/m
+%F=50; %N
+
+% Masses
+M_lever = 0.0207;
+M_jaw = 0.045;
+M_plate = 0.01863;
+M_rack = 0.01144;
+M_pinion = 0.00381;
+
+%Lengths
+L1= 0.025;
+L2= 0.02;
+L3= 0.10;
+L4= 0.24;
+L5= 0.05;
+L6= 0.12;
+Lrack = 0.13;
+Rp = 0.005;
+Lspring = 0.014;
+Rsspring = 0.008;
+Rlspring = 0.02;
+
+%Force
+Fw = 900;
+
+%Dampers
+D1= 10;
+D2 = 10;
+D3 = 10;
+
+%Springs
+%assuming springs are steel
+G = 79 * 10^9;
+Nsmall = 9;
+Nlarge = 5;
+d_lspring = 0.002;
+d_sspring =0.001;
+k_s = (d_sspring^4 * G)/ (8*Rsspring^3 * Nsmall);
+k_l = (d_lspring^4 * G) / (8*Rlspring^3 *Nlarge);
+
+syms x(t) % x(t) is the x in Mx''+Bx'+Kx=F
+
+%Lumping masses
+J1 = 1/3 * M_lever * L6^2;
+J2 = 1/3 * M_jaw * L4^2;
+Jp = 1/2 * M_pinion *Rp^2;
+
+Meq1 = J1 / L6^2;
+Jeq1 = Meq1 * L3^2 + J2;
+Meq2 = Jeq1 / L4^2 + M_plate;
+Jeq2 = Meq2 * L1^2;
+Meq3 = Jeq2 / L2^2 + M_rack;
+Jeq = Meq3 * Rp^2 +Jp;
+
+%Lumping force
+Taueq1 = Fw / 4 *L6;
+Feq1 = Taueq1 / L3 + Fw / 4;
+Taueq2 = Feq1 *L4 * 2;
+Feq2 = Taueq2 / L1;
+Taueq3 = Feq2 * L2;
+Feq3 = Taueq3 / Lrack;
+Taueq = Feq3 * Rp;
+
+%Lumping dampers
+Deq1 = D1 / L6^2;
+Deq2 = Deq1 * (L4/2)^2 + D2;
+Deq3 = Deq2 / L4^2;
+Deq4 = Deq3 *L1^2;
+Deq5 = Deq4 / L2^2;
+Deq6 = Deq5 * Lrack^2;
+Deq = Deq6 / Rp^2;
+
+%Lumping springs
+keq1 = (k_s / 2) * L3^2;
+keq2 = (k_s / 2) * L5^2;
+keq3 = keq2 / L6^2;
+keq4 = keq3 * (L4/2)^2;
+keq5 = (keq1 + keq4) / L4^2 * 2;
+keq6 = keq5 + k_l;
+keq7 = keq6 * L1^2;
+keq8 = keq7 / L2^2 + k_s;
+keq = keq8 * Rp^2;
+
+eqn1 = Jeq*diff(x,t,2) + Deq*diff(x,t) + keq*x == Taueq;
+%Note:in the above equation, x'' is written as diff(x,t,2)
+%x' is diff(x,t)
+
+Dx = diff(x,t);
+
+%specifying initial conditions
+initialCon = [x(0)==0, Dx(0)==0];
+
+%solving for X(t)
+solutionX = dsolve(eqn1, initialCon);
+
+%Solving for V(t) - velocity as a function of time
+solutionV=diff(solutionX);
+
+%Solving for A(T) - acceleration as a function of time
+solutionA = diff(solutionV);
+
+%Plotting X(t) between times 0 and 10s.
+fplot(solutionX, [0,10]);
+
+fPlot(solutionV, [0,10]);
+
+fPlot(solutionA, [0,10]);
