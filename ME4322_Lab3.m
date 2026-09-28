@@ -108,7 +108,16 @@ solutionA = diff(solutionV);
 
 %Plotting X(t) between times 0 and 10s.
 fplot(solutionX, [0,10]);
+xlabel('Time (seconds)');
+ylabel('Angle (degrees)');
+title('Bathroom Scale Position vs Time');
 
-fplot(solutionV, [0,10]);
+%fplot(solutionV, [0,10]);
+%xlabel('Time (seconds)');
+%ylabel('Angular Velocity (degrees/sec)');
+%title('Bathroom Scale Angular Velocity vs Time');
 
 fplot(solutionA, [0,10]);
+xlabel('Time (seconds)');
+ylabel('Angular Acceleration (degrees/sec^2)');
+title('Bathroom Scale Angular Acceleration vs Time');
